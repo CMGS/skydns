@@ -428,15 +428,15 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Answer = append(m.Answer, records...)
 		m.Extra = append(m.Extra, extra...)
 	case dns.TypeA, dns.TypeAAAA:
-		if strings.HasPrefix(name, s.config.Domain) {
-			s.ServeDNSForward(w, req)
-			return
-		}
 		records, err := s.AddressRecords(q, name, nil, bufsize, dnssec, false)
 		if err != nil {
 			if e, ok := err.(*etcd.EtcdError); ok {
 				if e.ErrorCode == 100 {
 					s.NameError(m, req)
+					return
+				}
+				if e.ErrorCode == 3000 {
+					s.ServeDNSForward(w, req)
 					return
 				}
 			}

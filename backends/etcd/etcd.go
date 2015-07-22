@@ -39,7 +39,7 @@ func NewBackend(client *etcd.Client, config *Config) *Backend {
 }
 
 func (g *Backend) Records(name string, exact bool) ([]msg.Service, error) {
-	path, star := msg.PathWithWildcard(name)
+	path, _ := msg.PathWithWildcard(name)
 	r, err := g.get(path, true)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,8 @@ func (g *Backend) Records(name string, exact bool) ([]msg.Service, error) {
 	case exact && r.Node.Dir:
 		return nil, nil
 	case r.Node.Dir:
-		return g.loopNodes(&r.Node.Nodes, segments, star, nil)
+		return nil, &etcd.EtcdError{ErrorCode: 3000}
+		//return g.loopNodes(&r.Node.Nodes, segments, star, nil)
 	default:
 		return g.loopNodes(&etcd.Nodes{r.Node}, segments, false, nil)
 	}
