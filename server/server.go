@@ -432,12 +432,7 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		if err != nil {
 			if e, ok := err.(*etcd.EtcdError); ok {
 				if e.ErrorCode == 100 {
-					s.NameError(m, req)
-					return
-				}
-				if e.ErrorCode == 3000 {
 					s.ServeDNSForward(w, req)
-					return
 				}
 			}
 		}
