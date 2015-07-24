@@ -124,6 +124,9 @@ func (g *Backend) loopNodes(n *etcd.Nodes, nameParts []string, star bool, bx map
 	}
 Nodes:
 	for _, n := range *n {
+		if strings.HasSuffix(n.Key, ".wildcards") {
+			continue
+		}
 		if n.Dir {
 			nodes, err := g.loopNodes(&n.Nodes, nameParts, star, bx)
 			if err != nil {
