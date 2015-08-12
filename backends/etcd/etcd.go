@@ -150,22 +150,26 @@ Nodes:
 				}
 			}
 		}
-		serv := new(msg.Service)
-		if err := json.Unmarshal([]byte(n.Value), serv); err != nil {
+		servs := map[string][]msg.Service{}
+		if err := json.Unmarshal([]byte(n.Value), &servs); err != nil {
 			return nil, err
 		}
-		b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
-		if _, ok := bx[b]; ok {
-			continue
-		}
-		bx[b] = true
+		for _, servlist := range servs {
+			for _, serv := range servlist {
+				b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
+				if _, ok := bx[b]; ok {
+					continue
+				}
+				bx[b] = true
 
-		serv.Key = n.Key
-		serv.Ttl = g.calculateTtl(n, serv)
-		if serv.Priority == 0 {
-			serv.Priority = int(g.config.Priority)
+				serv.Key = n.Key
+				serv.Ttl = g.calculateTtl(n, &serv)
+				if serv.Priority == 0 {
+					serv.Priority = int(g.config.Priority)
+				}
+				sx = append(sx, serv)
+			}
 		}
-		sx = append(sx, *serv)
 	}
 	return sx, nil
 }
