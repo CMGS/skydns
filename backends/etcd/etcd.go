@@ -157,11 +157,13 @@ Nodes:
 			return nil, err
 		}
 		for cidr, servlist := range servs {
-			if _, pool, err := net.ParseCIDR(cidr); err == nil && pool.Contains(rmtIP) {
-				sx = g.getServices(n, servlist, bx)
-				return sx, nil
-			} else if err != nil {
-				log.Printf("parse CIDR error %s", err)
+			if cidr != "default" {
+				if _, pool, err := net.ParseCIDR(cidr); err == nil && pool.Contains(rmtIP) {
+					sx = g.getServices(n, servlist, bx)
+					return sx, nil
+				} else if err != nil {
+					log.Printf("parse CIDR error %s", err)
+				}
 			}
 			sx = append(sx, g.getServices(n, servlist, bx)...)
 		}
