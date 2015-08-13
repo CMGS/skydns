@@ -157,45 +157,34 @@ Nodes:
 			return nil, err
 		}
 		for cidr, servlist := range servs {
-			_, pool, err := net.ParseCIDR(cidr)
-			log.Printf("fuckyou %s, src: %s", pool.String(), rmtIP.String())
-			if err == nil {
-				if pool.Contains(rmtIP) {
-					sx = []msg.Service{}
-					for _, serv := range servlist {
-						b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
-						if _, ok := bx[b]; ok {
-							continue
-						}
-						bx[b] = true
-
-						serv.Key = n.Key
-						serv.Ttl = g.calculateTtl(n, &serv)
-						if serv.Priority == 0 {
-							serv.Priority = int(g.config.Priority)
-						}
-						sx = append(sx, serv)
-						return sx, nil
-					}
-				}
+			if _, pool, err := net.ParseCIDR(cidr); err == nil && pool.Contains(rmtIP) {
+				sx = g.getServices(n, servlist, bx)
+				return sx, nil
+			} else if err != nil {
+				log.Printf("parse CIDR error %s", err)
 			}
-			for _, serv := range servlist {
-				b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
-				if _, ok := bx[b]; ok {
-					continue
-				}
-				bx[b] = true
-
-				serv.Key = n.Key
-				serv.Ttl = g.calculateTtl(n, &serv)
-				if serv.Priority == 0 {
-					serv.Priority = int(g.config.Priority)
-				}
-				sx = append(sx, serv)
-			}
+			sx = append(sx, g.getServices(n, servlist, bx)...)
 		}
 	}
 	return sx, nil
+}
+
+func (g *Backend) getServices(n *etcd.Node, servlist []msg.Service, bx map[bareService]bool) (servset []msg.Service) {
+	for _, serv := range servlist {
+		b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
+		if _, ok := bx[b]; ok {
+			continue
+		}
+		bx[b] = true
+
+		serv.Key = n.Key
+		serv.Ttl = g.calculateTtl(n, &serv)
+		if serv.Priority == 0 {
+			serv.Priority = int(g.config.Priority)
+		}
+		servset = append(servset, serv)
+	}
+	return servset
 }
 
 // calculateTtl returns the smaller of the etcd TTL and the service's
