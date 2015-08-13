@@ -6,6 +6,7 @@ package server
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/miekg/dns"
 )
@@ -88,8 +89,10 @@ func (s *server) ServeDNSReverse(w dns.ResponseWriter, req *dns.Msg) *dns.Msg {
 	m.Compress = true
 	m.Authoritative = false // Set to false, because I don't know what to do wrt DNSSEC.
 	m.RecursionAvailable = true
+	rmtIP := net.ParseIP(w.RemoteAddr().String())
+
 	var err error
-	if m.Answer, err = s.PTRRecords(req.Question[0]); err == nil {
+	if m.Answer, err = s.PTRRecords(req.Question[0], rmtIP); err == nil {
 		// TODO(miek): Reverse DNSSEC. We should sign this, but requires a key....and more
 		// Probably not worth the hassle?
 		if err := w.WriteMsg(m); err != nil {

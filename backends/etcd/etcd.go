@@ -9,6 +9,8 @@ package etcd
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"strings"
 	"sync"
 
@@ -38,7 +40,7 @@ func NewBackend(client *etcd.Client, config *Config) *Backend {
 	}
 }
 
-func (g *Backend) Records(name string, exact bool) ([]msg.Service, error) {
+func (g *Backend) Records(name string, exact bool, rmtIP net.IP) ([]msg.Service, error) {
 	path, star := msg.PathWithWildcard(name)
 	r, err := g.get(path, true)
 	if err != nil {
@@ -53,16 +55,16 @@ func (g *Backend) Records(name string, exact bool) ([]msg.Service, error) {
 			return nil, err
 		}
 		if r2, err := g.get(fmt.Sprintf("%s/.self", path), true); err != nil {
-			return g.loopNodes(&r.Node.Nodes, segments, star, nil)
+			return g.loopNodes(&r.Node.Nodes, segments, star, nil, rmtIP)
 		} else {
-			return g.loopNodes(&etcd.Nodes{r2.Node}, segments, false, nil)
+			return g.loopNodes(&etcd.Nodes{r2.Node}, segments, false, nil, rmtIP)
 		}
 	default:
-		return g.loopNodes(&etcd.Nodes{r.Node}, segments, false, nil)
+		return g.loopNodes(&etcd.Nodes{r.Node}, segments, false, nil, rmtIP)
 	}
 }
 
-func (g *Backend) ReverseRecord(name string) (*msg.Service, error) {
+func (g *Backend) ReverseRecord(name string, rmtIP net.IP) (*msg.Service, error) {
 	path, star := msg.PathWithWildcard(name)
 	if star {
 		return nil, fmt.Errorf("reverse can not contain wildcards")
@@ -75,7 +77,7 @@ func (g *Backend) ReverseRecord(name string) (*msg.Service, error) {
 		return nil, fmt.Errorf("reverse must not be a directory")
 	}
 	segments := strings.Split(msg.Path(name), "/")
-	records, err := g.loopNodes(&etcd.Nodes{r.Node}, segments, false, nil)
+	records, err := g.loopNodes(&etcd.Nodes{r.Node}, segments, false, nil, rmtIP)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +120,7 @@ type bareService struct {
 
 // loopNodes recursively loops through the nodes and returns all the values. The nodes' keyname
 // will be match against any wildcards when star is true.
-func (g *Backend) loopNodes(n *etcd.Nodes, nameParts []string, star bool, bx map[bareService]bool) (sx []msg.Service, err error) {
+func (g *Backend) loopNodes(n *etcd.Nodes, nameParts []string, star bool, bx map[bareService]bool, rmtIP net.IP) (sx []msg.Service, err error) {
 	if bx == nil {
 		bx = make(map[bareService]bool)
 	}
@@ -128,7 +130,7 @@ Nodes:
 			continue
 		}
 		if n.Dir {
-			nodes, err := g.loopNodes(&n.Nodes, nameParts, star, bx)
+			nodes, err := g.loopNodes(&n.Nodes, nameParts, star, bx, rmtIP)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +156,29 @@ Nodes:
 		if err := json.Unmarshal([]byte(n.Value), &servs); err != nil {
 			return nil, err
 		}
-		for _, servlist := range servs {
+		for cidr, servlist := range servs {
+			_, pool, err := net.ParseCIDR(cidr)
+			log.Printf("fuckyou %s, src: %s", pool.String(), rmtIP.String())
+			if err == nil {
+				if pool.Contains(rmtIP) {
+					sx = []msg.Service{}
+					for _, serv := range servlist {
+						b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
+						if _, ok := bx[b]; ok {
+							continue
+						}
+						bx[b] = true
+
+						serv.Key = n.Key
+						serv.Ttl = g.calculateTtl(n, &serv)
+						if serv.Priority == 0 {
+							serv.Priority = int(g.config.Priority)
+						}
+						sx = append(sx, serv)
+						return sx, nil
+					}
+				}
+			}
 			for _, serv := range servlist {
 				b := bareService{serv.Host, serv.Port, serv.Priority, serv.Weight, serv.Text}
 				if _, ok := bx[b]; ok {
