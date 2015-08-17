@@ -18,6 +18,10 @@ import (
 	"github.com/skynetservices/skydns/msg"
 )
 
+const (
+	DEFAULT_HOSTS = "default"
+)
+
 // Config represents configuration for the Etcd backend - these values
 // should be taken directly from server.Config
 type Config struct {
@@ -125,8 +129,8 @@ func (g *Backend) loopNodes(n *etcd.Nodes, nameParts []string, star bool, bx map
 		bx = make(map[bareService]bool)
 	}
 	var (
-		default_sx []msg.Service
-		all_sx     []msg.Service
+		defaultSx []msg.Service
+		allSx     []msg.Service
 	)
 Nodes:
 	for _, n := range *n {
@@ -160,27 +164,26 @@ Nodes:
 		if err := json.Unmarshal([]byte(n.Value), &servs); err != nil {
 			return nil, err
 		}
+
+		if defaultList, ok := servs[DEFAULT_HOSTS]; ok {
+			defaultSx = g.getServices(n, defaultList, bx)
+			delete(servs, DEFAULT_HOSTS)
+		}
 		for cidr, servlist := range servs {
-			if cidr != "default" {
-				if _, pool, err := net.ParseCIDR(cidr); err == nil && pool.Contains(rmtIP) {
-					sx = g.getServices(n, servlist, bx)
-					return sx, nil
-				} else if err != nil {
-					log.Printf("parse CIDR error %s", err)
-					continue
-				}
-			} else {
-				default_sx = g.getServices(n, servlist, bx)
+			sx = g.getServices(n, servlist, bx)
+			if _, pool, err := net.ParseCIDR(cidr); err == nil && pool.Contains(rmtIP) {
+				return sx, nil
+			} else if err != nil {
+				log.Printf("parse CIDR error %s", err)
 				continue
 			}
-			all_sx = append(all_sx, g.getServices(n, servlist, bx)...)
+			allSx = append(allSx, sx...)
 		}
 	}
-	if default_sx != nil {
-		return default_sx, nil
-	} else {
-		return all_sx, nil
+	if defaultSx != nil {
+		return defaultSx, nil
 	}
+	return allSx, nil
 }
 
 func (g *Backend) getServices(n *etcd.Node, servlist []msg.Service, bx map[bareService]bool) (servset []msg.Service) {
