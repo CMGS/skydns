@@ -124,6 +124,10 @@ func (g *Backend) loopNodes(n *etcd.Nodes, nameParts []string, star bool, bx map
 	if bx == nil {
 		bx = make(map[bareService]bool)
 	}
+	var (
+		default_sx []msg.Service
+		all_sx     []msg.Service
+	)
 Nodes:
 	for _, n := range *n {
 		if strings.HasSuffix(n.Key, ".wildcards") {
@@ -163,12 +167,20 @@ Nodes:
 					return sx, nil
 				} else if err != nil {
 					log.Printf("parse CIDR error %s", err)
+					continue
 				}
+			} else {
+				default_sx = g.getServices(n, servlist, bx)
+				continue
 			}
-			sx = append(sx, g.getServices(n, servlist, bx)...)
+			all_sx = append(all_sx, g.getServices(n, servlist, bx)...)
 		}
 	}
-	return sx, nil
+	if default_sx != nil {
+		return default_sx, nil
+	} else {
+		return all_sx, nil
+	}
 }
 
 func (g *Backend) getServices(n *etcd.Node, servlist []msg.Service, bx map[bareService]bool) (servset []msg.Service) {
