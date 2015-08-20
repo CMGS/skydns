@@ -167,6 +167,7 @@ func (s *server) Stop() {
 // ServeDNS is the handler for DNS requests, responsible for parsing DNS request, possibly forwarding
 // it to a real dns server and returning a response.
 func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
+	fflag := false
 	m := new(dns.Msg)
 	m.SetReply(req)
 	m.Authoritative = true
@@ -292,6 +293,9 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	promCacheMiss.WithLabelValues("response").Inc()
 
 	defer func() {
+		if fflag {
+			return
+		}
 		if m.Rcode == dns.RcodeServerFailure {
 			if err := w.WriteMsg(m); err != nil {
 				logf("failure to return reply %q", err)
@@ -422,6 +426,7 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			if e, ok := err.(*etcd.EtcdError); ok {
 				if e.ErrorCode == 100 {
 					s.ServeDNSForward(w, req)
+					fflag = true
 					//s.NameError(m, req)
 					return
 				}
@@ -436,6 +441,7 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			if e, ok := err.(*etcd.EtcdError); ok {
 				if e.ErrorCode == 100 {
 					s.ServeDNSForward(w, req)
+					fflag = true
 					return
 				}
 			}
