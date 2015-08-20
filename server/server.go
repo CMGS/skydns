@@ -436,6 +436,7 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			if e, ok := err.(*etcd.EtcdError); ok {
 				if e.ErrorCode == 100 {
 					s.ServeDNSForward(w, req)
+					return
 				}
 			}
 			logf("go error from backend: %s", err)
