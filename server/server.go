@@ -422,21 +422,21 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 		m.Answer = append(m.Answer, records...)
 	case dns.TypeTXT:
-		records, err := s.TXTRecords(q, name)
+		records, err := s.TXTRecords(q, name, rmtIP)
 		if isEtcdNameError(err, s) {
 			s.NameError(m, req)
 			return
 		}
 		m.Answer = append(m.Answer, records...)
 	case dns.TypeCNAME:
-		records, err := s.CNAMERecords(q, name)
+		records, err := s.CNAMERecords(q, name, rmtIP)
 		if isEtcdNameError(err, s) {
 			s.NameError(m, req)
 			return
 		}
 		m.Answer = append(m.Answer, records...)
 	case dns.TypeMX:
-		records, extra, err := s.MXRecords(q, name, bufsize, dnssec)
+		records, extra, err := s.MXRecords(q, name, bufsize, dnssec, rmtIP)
 		if isEtcdNameError(err, s) {
 			s.NameError(m, req)
 			return
