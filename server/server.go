@@ -178,6 +178,9 @@ func (s *server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	tcp := false
 	start := time.Now()
 
+	srcHost, _, _ := net.SplitHostPort(w.RemoteAddr().String())
+	rmtIP := net.ParseIP(srcHost)
+
 	q := req.Question[0]
 	name := strings.ToLower(q.Name)
 
