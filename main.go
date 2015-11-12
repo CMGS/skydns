@@ -44,6 +44,15 @@ func env(key, def string) string {
 	return def
 }
 
+func boolEnv(key string, def bool) bool {
+	if x := os.Getenv(key); x != "" {
+		if v, err := strconv.ParseBool(x); err == nil {
+			return v
+		}
+	}
+	return def
+}
+
 func init() {
 	flag.StringVar(&config.Domain, "domain", env("SKYDNS_DOMAIN", "skydns.local."), "domain to anchor requests to (SKYDNS_DOMAIN)")
 	flag.StringVar(&config.DnsAddr, "addr", env("SKYDNS_ADDR", "127.0.0.1:53"), "ip:port to bind to (SKYDNS_ADDR)")
@@ -57,10 +66,11 @@ func init() {
 	flag.StringVar(&cacert, "ca-cert", env("ETCD_CACERT", ""), "CA Certificate")
 	flag.DurationVar(&config.ReadTimeout, "rtimeout", 2*time.Second, "read timeout")
 	flag.BoolVar(&config.RoundRobin, "round-robin", true, "round robin A/AAAA replies")
+	flag.BoolVar(&config.NSRotate, "ns-rotate", true, "round robin selection of nameservers from among those listed")
 	flag.BoolVar(&discover, "discover", false, "discover new machines by watching /v2/_etcd/machines")
 	flag.BoolVar(&stub, "stubzones", false, "support stub zones")
 	flag.BoolVar(&config.Verbose, "verbose", false, "log queries")
-	flag.BoolVar(&config.Systemd, "systemd", false, "bind to socket(s) activated by systemd (ignore -addr)")
+	flag.BoolVar(&config.Systemd, "systemd", boolEnv("SKYDNS_SYSTEMD", false), "bind to socket(s) activated by systemd (ignore -addr)")
 
 	// TTl
 	// Minttl
@@ -92,7 +102,9 @@ func main() {
 	if err := loadConfig(client, config); err != nil {
 		log.Fatalf("skydns: %s", err)
 	}
-	server.SetDefaults(config)
+	if err := server.SetDefaults(config); err != nil {
+		log.Fatalf("skydns defaults could not be set from /etc/resolv.conf: %v", err)
+	}
 
 	if config.Local != "" {
 		config.Local = dns.Fqdn(config.Local)
