@@ -63,7 +63,7 @@ func (g *Backend) Records(name string, exact bool, rmtIP net.IP) ([]msg.Service,
 			return nil, err
 		}
 		if r2, err := g.get(fmt.Sprintf("%s/.self", path), true); err != nil {
-			return g.loopNodes(&r.Node.Nodes, segments, star, nil, rmtIP)
+			return g.loopNodes(r.Node.Nodes, segments, star, nil, rmtIP)
 		} else {
 			return g.loopNodes([]*etcd.Node{r2.Node}, segments, false, nil, rmtIP)
 		}
@@ -136,7 +136,7 @@ func (g *Backend) loopNodes(ns []*etcd.Node, nameParts []string, star bool, bx m
 		allSx     []msg.Service
 	)
 Nodes:
-	for _, n := range *n {
+	for _, n := range ns {
 		if strings.HasSuffix(n.Key, ".wildcards") {
 			continue
 		}

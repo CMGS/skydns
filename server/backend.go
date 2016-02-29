@@ -4,11 +4,15 @@
 
 package server
 
-import "github.com/skynetservices/skydns/msg"
+import (
+	"net"
+
+	"github.com/skynetservices/skydns/msg"
+)
 
 type Backend interface {
-	Records(name string, exact bool) ([]msg.Service, error)
-	ReverseRecord(name string) (*msg.Service, error)
+	Records(name string, exact bool, rmtIP net.IP) ([]msg.Service, error)
+	ReverseRecord(name string, rmtIP net.IP) (*msg.Service, error)
 }
 
 // FirstBackend exposes the Backend interface over multiple Backends, returning
