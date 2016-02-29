@@ -23,10 +23,10 @@ type FirstBackend []Backend
 // FirstBackend implements Backend
 var _ Backend = FirstBackend{}
 
-func (g FirstBackend) Records(name string, exact bool) (records []msg.Service, err error) {
+func (g FirstBackend) Records(name string, exact bool, rmtIP net.IP) (records []msg.Service, err error) {
 	var lastError error
 	for _, backend := range g {
-		if records, err = backend.Records(name, exact); err == nil && len(records) > 0 {
+		if records, err = backend.Records(name, exact, rmtIP); err == nil && len(records) > 0 {
 			return records, nil
 		}
 		if err != nil {
@@ -36,10 +36,10 @@ func (g FirstBackend) Records(name string, exact bool) (records []msg.Service, e
 	return nil, lastError
 }
 
-func (g FirstBackend) ReverseRecord(name string) (record *msg.Service, err error) {
+func (g FirstBackend) ReverseRecord(name string, rmtIP net.IP) (record *msg.Service, err error) {
 	var lastError error
 	for _, backend := range g {
-		if record, err = backend.ReverseRecord(name); err == nil && record != nil {
+		if record, err = backend.ReverseRecord(name, rmtIP); err == nil && record != nil {
 			return record, nil
 		}
 		if err != nil {
