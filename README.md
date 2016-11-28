@@ -17,7 +17,7 @@ has seen some changes, most notably the ability to use etcd as a backend.
 SkyDNS2:
 
 * Does away with Raft and uses etcd (which uses raft).
-* Makes is possible to query arbitrary domain names.
+* Makes it possible to query arbitrary domain names.
 * Is a thin layer above etcd, that translates etcd keys and values to the DNS.
 * Does DNSSEC with NSEC3 instead of NSEC.
 
@@ -79,8 +79,10 @@ SkyDNS' configuration is stored in etcd as a JSON object under the key
 * `scache`: the capacity of the DNSSEC signature cache, defaults to 10000 signatures if not set.
 * `rcache`: the capacity of the response cache, defaults to 0 messages if not set.
 * `rcache_ttl`: the TTL of the response cache, defaults to 60 if not set.
+* `ndots`: how many labels a name should have before we allow forwarding. Default to 2.
 * `systemd`: bind to socket(s) activated by systemd (ignores -addr).
 * `path-prefix`: backend(etcd) path prefix, defaults to skydns (i.e. if it is set to `mydns`, the SkyDNS's configuration object should be stored under the key `/mydns/config`).
+* `etcd3`: flag that toggles the etcd version 3 support by skydns during runtime. Defaults to false.
 
 To set the configuration, use something like:
 
@@ -121,12 +123,15 @@ SkyDNS uses these environment variables:
 * `ETCD_TLSKEY` - path of TLS client certificate - private key. Overwrite with `-tls-key` string flag.
 * `ETCD_TLSPEM` - path of TLS client certificate - public key. Overwrite with `-tls-pem` string flag.
 * `ETCD_CACERT` - path of TLS certificate authority public key. Overwrite with `-ca-cert` string flag.
+* `ETCD_USERNAME` - username used for basic auth. Overwrite with `-username` string flag.
+* `ETCD_PASSWORD` - password used for basic auth. Overwrite with `-password` string flag.
 * `SKYDNS_ADDR` - specify address to bind to. Overwrite with `-addr` string flag.
 * `SKYDNS_DOMAIN` - set a default domain if not specified by etcd config. Overwrite with `-domain` string flag.
 * `SKYDNS_NAMESERVERS` - set a list of nameservers to forward DNS requests to
   when not authoritative for a domain, "8.8.8.8:53,8.8.4.4:53". Overwrite with `-nameservers` string flag.
 * `SKYDNS_PATH_PREFIX` - backend(etcd) path prefix, defaults to skydns (i.e. if it is set to `mydns`, the SkyDNS's configuration object should be stored under the key `/mydns/config`). Overwrite with `-path-prefix` string flag.
 * `SKYDNS_SYSTEMD`: set to `true` to bind to socket(s) activated by systemd (ignores SKYDNS_ADDR). Overwrite with `-systemd` bool flag.
+* `SKYDNS_NDOTS`: how many labels a name should have before we allow forwarding. Default to 2.
 
 For [Prometheus](http://prometheus.io/) the following environment variables
 are available:
@@ -719,7 +724,7 @@ SkyDNS you must make sure if does not need glibc when run:
 
 Build SkyDNS with:
 
-    % go build -a -tags netgo -installsuffix netgo
+    % GOOS=linux go build -a -tags netgo -installsuffix netgo
 
 And then build the docker image:
 
